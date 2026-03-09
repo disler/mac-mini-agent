@@ -9,6 +9,106 @@ Binary: `apps/steer/.build/release/steer`
 
 Run `steer --help` and `steer help <command>` to learn each command's flags before using it.
 
+## ⚠️ If `steer` is not available
+
+If `steer` is not installed or `command not found`, use the **Native macOS Toolkit** below instead. These tools are always available and cover most of the same capabilities.
+
+### Native macOS Toolkit (AppleScript + shell)
+
+**Launch / activate apps:**
+```bash
+osascript -e 'tell application "Safari" to activate'
+open -a Safari
+open -a Safari "https://news.ycombinator.com"
+```
+
+**Navigate to a URL in Safari:**
+```bash
+osascript -e 'tell application "Safari" to set URL of front document to "https://example.com"'
+# Or open a new window:
+osascript -e 'tell application "Safari" to open location "https://example.com"'
+```
+
+**Wait for page load:**
+```bash
+# Poll until Safari is not loading
+for i in $(seq 1 30); do
+  loading=$(osascript -e 'tell application "Safari" to return loading of front document')
+  [ "$loading" = "false" ] && break
+  sleep 1
+done
+```
+
+**Take a screenshot:**
+```bash
+screencapture -x /tmp/screenshot.png          # full screen, silent
+screencapture -x -R 0,0,1920,1080 /tmp/s.png  # region
+```
+
+**Read clipboard / write clipboard:**
+```bash
+pbpaste                    # read
+echo "text" | pbcopy       # write
+```
+
+**Type text into focused app:**
+```bash
+osascript -e 'tell application "System Events" to keystroke "hello world"'
+```
+
+**Press keys / hotkeys:**
+```bash
+osascript -e 'tell application "System Events" to keystroke "a" using command down'  # Cmd+A
+osascript -e 'tell application "System Events" to key code 36'                        # Return (key code 36)
+osascript -e 'tell application "System Events" to key code 53'                        # Escape
+```
+
+**Click at coordinates:**
+```bash
+osascript -e 'tell application "System Events" to click at {500, 300}'
+```
+
+**Read text from screen (OCR via Vision framework):**
+```bash
+# Use drive to run a python one-liner:
+python3 -c "
+import Vision, Quartz, objc
+# ... or use screencapture + a Vision script
+"
+# Simpler: read Safari's page source directly when dealing with web content
+osascript -e 'tell application "Safari" to return source of front document'
+```
+
+**Get web page content without GUI:**
+```bash
+curl -s "https://example.com"
+# Or from the already-open Safari page:
+osascript -e 'tell application "Safari" to return source of front document'
+```
+
+**Create a Note in Notes.app:**
+```bash
+osascript <<'EOF'
+tell application "Notes"
+  activate
+  set newNote to make new note at folder "Notes" with properties {name:"My Title", body:"Content here"}
+end tell
+EOF
+```
+
+**Check what apps are running:**
+```bash
+osascript -e 'tell application "System Events" to get name of every process whose background only is false'
+```
+
+### Workflow with native toolkit
+
+The same observe-act-verify loop applies:
+1. `screencapture -x /tmp/before.png` — capture state
+2. Perform one action (osascript / open / curl)
+3. `screencapture -x /tmp/after.png` — verify it worked
+4. Read the screenshot or page source to confirm before proceeding
+
 ## Commands
 
 | Command     | Purpose                                                                                                                                                                                                    |

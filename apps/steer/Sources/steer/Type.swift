@@ -1,6 +1,18 @@
 import ArgumentParser
 import Foundation
 
+private func jsonEscape(_ s: String) -> String {
+    guard let data = try? JSONSerialization.data(withJSONObject: s),
+          let encoded = String(data: data, encoding: .utf8) else {
+        return s.replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "\"", with: "\\\"")
+                .replacingOccurrences(of: "\n", with: "\\n")
+                .replacingOccurrences(of: "\r", with: "\\r")
+                .replacingOccurrences(of: "\t", with: "\\t")
+    }
+    return String(encoded.dropFirst().dropLast())
+}
+
 struct Type: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "type",
@@ -40,7 +52,7 @@ struct Type: ParsableCommand {
         Keyboard.typeText(text)
 
         if json {
-            let escaped = text.replacingOccurrences(of: "\"", with: "\\\"")
+            let escaped = jsonEscape(text)
             print("{\"action\":\"type\",\"text\":\"\(escaped)\",\"ok\":true}")
         } else {
             print("Typed \"\(text)\"\(into != nil ? " into \(into!)" : "")")

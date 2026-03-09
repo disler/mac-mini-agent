@@ -79,23 +79,40 @@ class SessionInfo:
 def open_terminal_window(command: str) -> None:
     """Open a new Terminal.app window and run a command in it.
 
-    Uses AppleScript on macOS to tell Terminal.app to execute a script.
-    The new window inherits the current working directory.
+    Writes the command to a temporary shell script instead of embedding it
+    directly in the AppleScript string, preventing AppleScript injection via
+    special characters (single quotes, newlines, backticks) in cwd or command.
     """
     if platform.system() != "Darwin":
         return  # silently skip on non-macOS
+    import shlex
+    import stat
+    import tempfile
+
     cwd = os.getcwd()
-    shell_command = f"cd '{cwd}' && {command}"
-    escaped = shell_command.replace("\\", "\\\\").replace('"', '\\"')
-    subprocess.run(
-        [
-            "osascript",
-            "-e",
-            f'tell application "Terminal" to do script "{escaped}"',
-        ],
-        capture_output=True,
-        text=True,
-    )
+    script_content = f"#!/bin/sh\ncd {shlex.quote(cwd)} && {command}\n"
+    fd, script_path = tempfile.mkstemp(suffix=".sh", prefix="drive-term-")
+    try:
+        os.write(fd, script_content.encode())
+        os.close(fd)
+        os.chmod(script_path, stat.S_IRWXU)  # 0o700 — owner-execute only
+        # script_path is a system-generated path; safe to embed after quote-escaping
+        escaped_path = script_path.replace("\\", "\\\\").replace('"', '\\"')
+        subprocess.run(
+            [
+                "osascript",
+                "-e",
+                f'tell application "Terminal" to do script "{escaped_path}"',
+            ],
+            capture_output=True,
+            text=True,
+        )
+    except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        raise
 
 
 def create_session(
