@@ -1,6 +1,22 @@
 import ArgumentParser
 import Foundation
 
+/// Escape a string for embedding inside a JSON string literal.
+/// Uses JSONSerialization to handle all control characters per the JSON spec.
+private func jsonEscape(_ s: String) -> String {
+    guard let data = try? JSONSerialization.data(withJSONObject: s),
+          let encoded = String(data: data, encoding: .utf8) else {
+        // Fallback: manual escaping of the most common characters
+        return s.replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "\"", with: "\\\"")
+                .replacingOccurrences(of: "\n", with: "\\n")
+                .replacingOccurrences(of: "\r", with: "\\r")
+                .replacingOccurrences(of: "\t", with: "\\t")
+    }
+    // JSONSerialization wraps the value in quotes — strip them
+    return String(encoded.dropFirst().dropLast())
+}
+
 struct Clipboard: ParsableCommand {
     static let configuration = CommandConfiguration(
         abstract: "Read or write the system clipboard."
@@ -28,7 +44,7 @@ struct Clipboard: ParsableCommand {
             case "text":
                 let content = ClipboardControl.readText()
                 if json {
-                    let escaped = (content ?? "").replacingOccurrences(of: "\"", with: "\\\"").replacingOccurrences(of: "\n", with: "\\n")
+                    let escaped = jsonEscape(content ?? "")
                     print("{\"action\":\"read\",\"type\":\"text\",\"content\":\"\(escaped)\",\"ok\":true}")
                 } else {
                     print(content ?? "(clipboard empty)")
@@ -45,7 +61,7 @@ struct Clipboard: ParsableCommand {
                 guard let text = text else { throw ValidationError("Provide text to write") }
                 ClipboardControl.writeText(text)
                 if json {
-                    let escaped = text.replacingOccurrences(of: "\"", with: "\\\"").replacingOccurrences(of: "\n", with: "\\n")
+                    let escaped = jsonEscape(text)
                     print("{\"action\":\"write\",\"type\":\"text\",\"content\":\"\(escaped)\",\"ok\":true}")
                 } else {
                     print("Copied to clipboard: \"\(text.prefix(80))\(text.count > 80 ? "..." : "")\"")

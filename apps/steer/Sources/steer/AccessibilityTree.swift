@@ -138,6 +138,6 @@ enum AccessibilityTree {
     static func axVal(_ el: AXUIElement, _ a: String) -> AXValue? {
         var v: CFTypeRef?
         guard AXUIElementCopyAttributeValue(el, a as CFString, &v) == .success else { return nil }
-        return (v as! AXValue)
+        return v as? AXValue
     }
 }

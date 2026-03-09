@@ -7,7 +7,7 @@ You are running as job `{{JOB_ID}}`. Your job file is at `apps/listen/jobs/{{JOB
 ## Workflows
 
 You have three workflows: `Work & Progress Updates`, `Summary`, and `Clean Up`.
-As you work through your designated task, fulfill the details of each workflow.
+**All three are mandatory.** The job is not complete until all three are done.
 
 ### 1. Work & Progress Updates
 
@@ -36,12 +36,24 @@ yq -i '.summary = "Opened Safari, captured accessibility tree with 42 elements, 
 
 ### 3. Clean Up
 
-After writing your summary, clean up everything you created during the job:
+**This step is mandatory — do not skip it.** After writing your summary, run cleanup before you finish.
 
-- IMPORTANT: **Kill any tmux sessions you created** with `drive session kill <name>` — only sessions YOU created, not the session you are running in
-- IMPORTANT: **Close apps you opened** that were not already running before your task started
-- **Remove any previous coding instances** that were not closed in the previous session. Look sitting Claude Code, PI, Gemini, Codex, OpenCode, or other agents just sitting doing nothing.
-- **Remove temp files** you wrote to `/tmp/` that are no longer needed
-- **Leave the desktop as you found it** — minimize or close windows you opened
+Before starting your task, note which apps are already running so you know what to close afterward:
+```bash
+osascript -e 'tell application "System Events" to get name of every process whose background only is false'
+```
+
+Clean up everything you created:
+
+- **Kill tmux sessions you created** — `drive session kill <name>` — only sessions YOU created, not your own job session
+- **Close apps you opened** that were not already running before your task — use `osascript -e 'quit app "AppName"'`
+- **Remove temp files** you wrote to `/tmp/` — `rm /tmp/steer-* /tmp/your-files`
+- **Close extra windows** — if an app was already running, close only the windows you opened
+- **Remove idle coding instances** — close any Claude Code, PI, Gemini, Codex, or OpenCode windows just sitting doing nothing
+
+After cleanup, append a final update confirming cleanup is done:
+```bash
+yq -i '.updates += ["Cleanup complete — closed opened apps and removed temp files"]' apps/listen/jobs/{{JOB_ID}}.yaml
+```
 
 Do NOT kill your own job session (`job-{{JOB_ID}}`) — the worker process handles that.
