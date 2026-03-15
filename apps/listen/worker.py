@@ -29,20 +29,28 @@ def _session_exists(name: str) -> bool:
     return result.returncode == 0
 
 
-def _open_terminal(session_name: str, cwd: str) -> None:
-    """Open a new Terminal.app window with a tmux session attached."""
+def _open_terminal(session_name: str, cwd: str) -> int | None:
+    """Open a new Terminal.app window with a tmux session attached.
+
+    Returns the Terminal window ID so it can be closed later.
+    """
     tmux_cmd = f"cd '{cwd}' && tmux new-session -A -s {session_name}"
     escaped = tmux_cmd.replace("\\", "\\\\").replace('"', '\\"')
-    subprocess.run(
-        ["osascript", "-e", f'tell application "Terminal" to do script "{escaped}"'],
+    result = subprocess.run(
+        ["osascript", "-e", f'tell application "Terminal"\nset t to do script "{escaped}"\nreturn id of window of t\nend tell'],
         capture_output=True,
         text=True,
     )
+    window_id: int | None = None
+    try:
+        window_id = int(result.stdout.strip())
+    except (ValueError, AttributeError):
+        pass
     # Wait for session to appear
     deadline = time.monotonic() + 5.0
     while time.monotonic() < deadline:
         if _session_exists(session_name):
-            return
+            return window_id
         time.sleep(0.2)
     raise RuntimeError(f"tmux session '{session_name}' did not appear within 5s")
 
@@ -122,7 +130,7 @@ def main():
 
     try:
         # Open headed Terminal window with tmux session
-        _open_terminal(session_name, str(repo_root))
+        terminal_window_id = _open_terminal(session_name, str(repo_root))
 
         # Send the wrapped command
         _send_keys(session_name, wrapped)
@@ -160,6 +168,11 @@ def main():
     prompt_tmp.unlink(missing_ok=True)
     if _session_exists(session_name):
         _tmux("kill-session", "-t", session_name, check=False)
+    if terminal_window_id:
+        subprocess.run(
+            ["osascript", "-e", f'tell application "Terminal" to close (every window whose id is {terminal_window_id})'],
+            capture_output=True,
+        )
 
 
 if __name__ == "__main__":
