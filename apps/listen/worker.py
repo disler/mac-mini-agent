@@ -105,7 +105,7 @@ def main():
 
     # Build the claude command — read prompt from file to avoid truncation
     claude_cmd = (
-        f"claude --dangerously-skip-permissions"
+        f"claude --dangerously-skip-permissions --print"
         f' --append-system-prompt "$(cat {sys_prompt_tmp})"'
         f' "$(cat {prompt_tmp})"'
     )
